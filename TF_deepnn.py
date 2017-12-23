@@ -24,7 +24,9 @@ class DataSet:
     def __init__(self,
                  data_type='mnist',
                  use_vgg_pretrained = False,
-                 num_conv_layers = 3
+                 num_conv_layers = 3,
+		 kl_type='mean',
+	         num_classes=4
                  ):
 
         self.vgg_pretrained = use_vgg_pretrained
@@ -100,7 +102,7 @@ class DataSet:
             print svhn.images.shape
 
         if data_type == 'fdg' or data_type == 'av45' or data_type == 'mri':
-            train, eval = BrainImages_input.get_data(one_hot_encoding=True, intype=data_type)
+            train, eval = BrainImages_input.get_data(one_hot_encoding=True, intype=data_type, kl_type=kl_type, num_classes=num_classes)
             self.next_batch = train.next_batch
             self.eval_images = eval.images
             self.eval_labels = eval.labels

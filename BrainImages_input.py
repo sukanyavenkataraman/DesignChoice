@@ -132,28 +132,23 @@ def get_kl_divergence_data(intype):
     images = np.load('/home/sukanya/Documents/'+intype+'/train_test.npy', 'r')
     num_images, height, width, depth = images.shape
     print height, width, depth
-    if True:
-        #isNan = np.isnan(images)
-        #print len(isNan[isNan == True]), num_images*height*width*depth
-        images = images[np.logical_not(np.isnan(images))]
-        images = np.reshape(images, [num_images,-1])
-        #to_plot = images
-        # .transpose(0, 3, 2, 1)
-        plt.imshow(images)
-        plt.show()
-        #plt.imshow(images[1][2])
-        #plt.show()
 
-        return
-
+    # Removing all NANs
     images_flattened = np.reshape(images, [num_images, height*width*depth])
+    #images_mean = np.mean(images_flattened, axis=0)
 
+    #isNan = np.isnan(images_flattened)
+    #print np.isnan(images_flattened)
+    print images_flattened.shape
+    images_nan = images_flattened[:, ~np.any(np.isnan(images_flattened), axis=0)]
+    print images_nan.shape
+    
     labels = np.load('/home/sukanya/Documents/'+intype+'/train_test_labels.npy', 'r')
 
-    get_kl_divergence(images_flattened, labels, intype)
+    get_kl_divergence(images_nan, labels, intype)
+    
 
-
-def get_data(one_hot_encoding=True, intype='fdg',kl_type='median', no_classes=2,trim=True, is_flat=True):
+def get_data(one_hot_encoding=True, intype='fdg',kl_type='median', num_classes=2,trim=True, is_flat=True):
     # kl_type = None means just take the largest across all combinations, and get rid of repetitions
     # kl_type = 'mean' means take the mean of all the values across all combinations and then take the top n
     # kl_type = 'median' same as above but median instead of mean
@@ -175,7 +170,7 @@ def get_data(one_hot_encoding=True, intype='fdg',kl_type='median', no_classes=2,
     if trim:
         kl_divergence = np.load('/home/sukanya/Documents/'+intype+'/train_test_trim.npy', 'r')
 
-        if no_classes == 2:
+        if num_classes == 2:
             # Take only the first and last classes
             kl_divergence = kl_divergence[0:1,3:4,:] + kl_divergence[3:4,0:1,:]
 
@@ -183,7 +178,7 @@ def get_data(one_hot_encoding=True, intype='fdg',kl_type='median', no_classes=2,
             kl_divergence_mean = np.reshape(kl_divergence, [kl_divergence.shape[0]*kl_divergence.shape[1], kl_divergence.shape[2]])
             kl_divergence_mean = np.mean(kl_divergence_mean, axis=0)
 
-            indices = largest_indices(kl_divergence_mean, 60000)
+            indices = largest_indices(kl_divergence_mean, 80000)
             unique_indices = np.unique(indices[0])
 
         if kl_type == 'median':
@@ -225,7 +220,7 @@ def get_data(one_hot_encoding=True, intype='fdg',kl_type='median', no_classes=2,
 
     test_set, train_set = np.split(images_labels[images_labels[:,images.shape[1]]==0].copy(), \
                                    [int(num_test*count[0]), ], axis=0)
-    if no_classes == 2:
+    if num_classes == 2:
         list_start = 3
     else:
         list_start = 1
@@ -266,8 +261,8 @@ get_kl_divergence_data(intype='av45')
 print 'av45'
 get_data(intype='av45')
 '''
-print 'mri'
+#print 'mri'
 #get_orig_data_and_save(intype='mri')
-get_kl_divergence_data(intype='mri')
+#get_kl_divergence_data(intype='mri')
 #get_data(intype='mri')
 
