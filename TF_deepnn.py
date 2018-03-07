@@ -23,44 +23,51 @@ class Hyperparams:
 class DataSet:
     def __init__(self,
                  data_type='mnist',
+                 use_resnet_pretrained = False,
                  use_vgg_pretrained = False,
                  num_conv_layers = 3,
-		 kl_type='mean',
-	         num_classes=4
+                 kl_type='mean',
+                 num_classes=4
                  ):
 
         self.vgg_pretrained = use_vgg_pretrained
+        self.resnet_pretrained = use_resnet_pretrained
         self.vgg_num_conv_layers = num_conv_layers
         self.data_type = data_type
 
         if data_type == 'mnist':
             mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+            input_data.rea
             self.next_batch = mnist.train.next_batch
-            self.eval_images = mnist.test.images
-            self.eval_labels = mnist.test.labels
+            self.eval_images = mnist.validation.images
+            self.eval_labels = mnist.validation.labels
+            self.test_images = mnist.test.images
+            self.test_labels = mnist.test.labels
             self.input_dim = 28
             self.num_classes = 10
             self.num_channels = 1
             self.num_images = len(mnist.train.images)
             self.scat_w_filterh = 1
             self.scat_w_filterw = 1
-	    self.size = self.eval_images.shape[-1]
-	    print self.num_images
+            self.size = self.eval_images.shape[-1]
+            print self.num_images
 
         if data_type == 'cifar10':
             cifar_dir = '/home/sukanya/Documents/'
-            cifar10 = cifar10_input.load_training_data(cifar_dir, self.vgg_pretrained, one_hot_encoding=True)
+            cifar10, eval = cifar10_input.load_training_data(cifar_dir, resnet=self.resnet_pretrained, vgg=self.vgg_pretrained, num_conv_layers=self.vgg_num_conv_layers, one_hot_encoding=True)
             self.next_batch = cifar10.next_batch
-            eval = cifar10_input.load_test_data(cifar_dir, self.vgg_pretrained, one_hot_encoding=True)
             self.eval_images = eval.images
             self.eval_labels = eval.labels
+            test = cifar10_input.load_test_data(cifar_dir, resnet=self.resnet_pretrained, vgg=self.vgg_pretrained, num_conv_layers=self.vgg_num_conv_layers, one_hot_encoding=True)
+            self.test_images = test.images
+            self.test_labels = test.labels
             self.input_dim = 32
             self.num_classes = 10
             self.num_channels = 3
             self.num_images = len(cifar10.images)
             self.scat_w_filterh = 5
             self.scat_w_filterw = 5
-	    self.size = self.eval_images.shape[-1]
+            self.size = self.eval_images.shape[-1]
             print cifar10.images.shape
 
         if data_type == 'mrbi':
@@ -68,17 +75,19 @@ class DataSet:
             mrbi_train_file = mrbi_dir + 'mrbi_train.amat'
             mrbi_test_file = mrbi_dir + 'mrbi_test.amat'
 
-            mrbi = mrbi_input.get_data(mrbi_train_file, train=True, one_hot_encoding=True, do_scattering_transform=False,
+            mrbi, eval = mrbi_input.get_data(mrbi_train_file, train=True, one_hot_encoding=True, do_scattering_transform=False,
                                        J=2)
             self.next_batch = mrbi.next_batch
-            eval = mrbi_input.get_data(mrbi_test_file, train=False, one_hot_encoding=True)
             self.eval_images = eval.images
             self.eval_labels = eval.labels
+            test = mrbi_input.get_data(mrbi_test_file, train=False, one_hot_encoding=True)
+            self.test_images = test.images
+            self.test_labels = test.labels
             self.input_dim = 28
             self.num_classes = 10
             self.num_channels = 1
             self.num_images = len(mrbi.images)
-	    self.size = self.eval_images.shape[-1]
+            self.size = self.eval_images.shape[-1]
             self.scat_w_filterh = 5
             self.scat_w_filterw = 5
 
@@ -87,30 +96,34 @@ class DataSet:
             svhn_train_file = svhn_dir + 'train_32x32.mat'
             svhn_test_file = svhn_dir + 'test_32x32.mat'
 
-            svhn = svhn_input.get_data(svhn_train_file, is_vgg=self.vgg_pretrained, train=True, one_hot_encoding=True)
+            svhn, eval = svhn_input.get_data(svhn_train_file, is_vgg=self.vgg_pretrained, train=True, one_hot_encoding=True)
             self.next_batch = svhn.next_batch
-            eval = svhn_input.get_data(svhn_test_file, is_vgg=self.vgg_pretrained, train=False, one_hot_encoding=True)
             self.eval_images = eval.images
             self.eval_labels = eval.labels
+            test = svhn_input.get_data(svhn_test_file, is_vgg=self.vgg_pretrained, train=False, one_hot_encoding=True)
+            self.test_images = test.images
+            self.test_labels = test.labels
             self.input_dim = 32
             self.num_classes = 10
             self.num_channels = 3
             self.num_images = len(svhn.images)
             self.scat_w_filterh = 5
             self.scat_w_filterw = 5
-	    self.size = self.eval_images.shape[-1]
+            self.size = self.eval_images.shape[-1]
             print svhn.images.shape
 
         if data_type == 'fdg' or data_type == 'av45' or data_type == 'mri':
-            train, eval = BrainImages_input.get_data(one_hot_encoding=True, intype=data_type, kl_type=kl_type, num_classes=num_classes)
+            train, eval, test = BrainImages_input.get_data(one_hot_encoding=True, use_resnet=use_resnet_pretrained, use_vgg=use_vgg_pretrained, no_vgg_layers=self.vgg_num_conv_layers, intype=data_type, kl_type=kl_type, num_classes=num_classes)
             self.next_batch = train.next_batch
             self.eval_images = eval.images
             self.eval_labels = eval.labels
+            self.test_images = test.images
+            self.test_labels = test.labels
             self.input_dim = 79  # Works ONLY because downstream it is used as input_dim*input_dim*num_channels
             self.num_classes = 4
             self.num_channels = 95
             self.num_images = len(train.images)
-	    self.size = self.eval_images.shape[-1]
+            self.size = self.eval_images.shape[-1]
             print train.images.shape
 
 
@@ -135,7 +148,7 @@ class deepNN:
                  alexnet_pretrained=False,
                  alexnet_num_conv_layers=5,
                  save_models = False,
-		 model_dir = '/home/sukanya/PycharmProjects/TensorFlow/Hyperband/Models_Medical/',
+         model_dir = '/home/sukanya/PycharmProjects/TensorFlow/Hyperband/Models_Medical',
                  model_name='HB',
                  decay_rate=0.99,
                  decay_steps=1000):
@@ -176,14 +189,15 @@ class deepNN:
         self.alexnet_num_conv_layers = alexnet_num_conv_layers
 
         # Save all the models to use while running hyperband
-        self.models = {}
-        self.saved_model_loc = model_dir+input_data.data_type+'/'+model_name+'/'
-	if not os.path.exists(model_dir):
-	    os.mkdir(model_dir)
-	if not os.path.exists(model_dir+input_data.data_type):
-	    os.mkdir(model_dir+input_data.data_type)
-        if not os.path.exists(self.saved_model_loc):
-            os.mkdir(self.saved_model_loc)
+        if save_models:
+            self.models = {}
+            self.saved_model_loc = model_dir+'/'+input_data.data_type+'/'+model_name
+            if not os.path.exists(model_dir):
+                os.mkdir(model_dir)
+            if not os.path.exists(model_dir+'/'+input_data.data_type):
+                os.mkdir(model_dir+'/'+input_data.data_type)
+            if not os.path.exists(self.saved_model_loc):
+                os.mkdir(self.saved_model_loc)
 
         self.global_count = 0
 
@@ -195,6 +209,8 @@ class deepNN:
         self.next_batch = input_data.next_batch
         self.eval_images = input_data.eval_images
         self.eval_labels = input_data.eval_labels
+        self.test_images = input_data.test_images
+        self.test_labels = input_data.test_labels
         self.num_classes = input_data.num_classes
         self.input_dim = input_data.input_dim
         self.num_channels = input_data.num_channels
@@ -306,19 +322,19 @@ class deepNN:
 
             y = tf.matmul(h2, w) + b
 
-        y_softmax = tf.nn.softmax(y, name = 'softmax')
+        #y_softmax = tf.nn.softmax(y, name = 'softmax')
 
-        return y_softmax, keep_prob, h2
+        return y, keep_prob, h2
 
     def run_eval_hyperparam_withbs(self, hyperparams, num_epochs, keepProb):
 
         tf.reset_default_graph() # To enable restoring and reloading saved files
-	
+
         # Input data
-        if self.use_vgg_pretrained:
-            x = tf.placeholder(tf.float32, [None, 4*4*256]) # TODO: Remove hard coding!
-        else:
-            x = tf.placeholder(tf.float32, [None, self.img_size])
+        #if self.use_vgg_pretrained:
+         #   x = tf.placeholder(tf.float32, [None, 4*4*256]) # TODO: Remove hard coding!
+        #else:
+        x = tf.placeholder(tf.float32, [None, self.img_size])
 
         # Output data
         y = tf.placeholder(tf.float32, [None, self.num_classes])
@@ -347,12 +363,12 @@ class deepNN:
         if self.save_models:
             saver = tf.train.Saver()
 
-	#accuracy_summary = tf.summary.scalar("Training Accuracy", accuracy)
-	#summaries_dir = '/home/sukanya/PycharmProjects/TensorFlow/Hyperband/Summaries/'
+    #accuracy_summary = tf.summary.scalar("Training Accuracy", accuracy)
+    #summaries_dir = '/home/sukanya/PycharmProjects/TensorFlow/Hyperband/Summaries/'
 
         with tf.Session() as sess:
-	    #train_writer = tf.summary.FileWriter(summaries_dir + '/train', sess.graph)
-	    #test_writer = tf.summary.FileWriter(summaries_dir + '/test')
+        #train_writer = tf.summary.FileWriter(summaries_dir + '/train', sess.graph)
+        #test_writer = tf.summary.FileWriter(summaries_dir + '/test')
             sess.run(tf.global_variables_initializer())
 
             if self.save_models:
@@ -361,7 +377,14 @@ class deepNN:
                     model_location = self.models[hyperparams]
                     saver.restore(sess, model_location)
                 else:
-                    model_location = self.saved_model_loc + str(self.global_count) + '_'+str(hyperparams)+'/model.ckpt'
+                    hidden_layers = ""
+                    for i in range(len(hyperparams.hidden_layer_sizes)):
+                        if i == 0:
+                            hidden_layers = str(hyperparams.hidden_layer_sizes[i])
+                        else:
+                            hidden_layers += "_"+str(hyperparams.hidden_layer_sizes[i])
+
+                    model_location = self.saved_model_loc + '/'+str(self.global_count) + '_'+str(hyperparams.learning_rate)+'_'+hidden_layers+'/model.ckpt'
                     self.models[hyperparams] = model_location
                     self.global_count += 1
 
@@ -369,40 +392,48 @@ class deepNN:
                 for i in range(self.train_num_batches):
                     batch = self.next_batch(self.batch_size)
 
-                    if i % 20 == 0:
+                    if i % 100 == 0:
                         train_accuracy = accuracy.eval(feed_dict={
                             x: batch[0], y: batch[1], keep_prob: 1.0})
-                        print('epoch %d step %d global step %d, training accuracy %g learning_rate %f' % (epoch, i, global_step.eval(), train_accuracy, learning_rate.eval()))
-		    #print batch[0]
+                        print('epoch %d step %d global step %d, training accuracy %g learning_rate %f' % (
+                        epoch, i, global_step.eval(), train_accuracy, learning_rate.eval()))
+            #print batch[0]
                     #summary, step = sess.run([accuracy_summary, global_step], feed_dict={x: batch[0], y: batch[1], keep_prob: keepProb})
-		    #train_writer.add_summary(summary, epoch)
-		
+            #train_writer.add_summary(summary, epoch)
+
                 #evaluation = accuracy.eval(feed_dict={x: self.eval_images, y: self.eval_labels, keep_prob: 1.0})
                     train.run(feed_dict={x: batch[0], y: batch[1], keep_prob: keepProb})
-                y_h = sess.run([accuracy, cross_entropy, correct_predictions, h2], feed_dict={x: self.eval_images, y: self.eval_labels, keep_prob: 1.0})
-	#	test_writer.add_summary(y_h[0], epoch)
+                #y_h = sess.run([accuracy, cross_entropy, correct_predictions, h2], feed_dict={x: self.test_images, y: self.test_labels, keep_prob: 1.0})
+                eval_accuracy = accuracy.eval(feed_dict={
+                    x: self.eval_images, y: self.eval_labels, keep_prob: 1.0})
+                print('epoch %d step %d global step %d, validation accuracy %g learning_rate %f' % (epoch, i, global_step.eval(), eval_accuracy, learning_rate.eval()))
+                #test_writer.add_summary(y_h[0], epoch)
 
-                '''
-                print y_h[3].shape
-                to_plot = y_h[3]
-                print  to_plot
-                to_plot_np = np.asarray(to_plot)
+            test_accuracy = accuracy.eval(feed_dict={
+                    x: self.test_images, y: self.test_labels, keep_prob: 1.0})
+            print('epoch %d step %d global step %d, test accuracy %g learning_rate %f' % (
+                epoch, i, global_step.eval(), test_accuracy, learning_rate.eval()))
+            '''
+            print y_h[3].shape
+            to_plot = y_h[3]
+            print  to_plot
+            to_plot_np = np.asarray(to_plot)
 
-                to_plot = np.reshape(to_plot_np, [-1,1,10,10])
-                print to_plot
+            to_plot = np.reshape(to_plot_np, [-1,1,10,10])
+            print to_plot
 
-                plt.imshow(to_plot[0][0])
-                plt.show()
+            plt.imshow(to_plot[0][0])
+            plt.show()
 
-                plt.imshow(to_plot[0][0])
-                plt.show()
-                '''
-                print ('Evaluation after epoch %d is : %f' %(epoch, y_h[0]))
-	    
+            plt.imshow(to_plot[0][0])
+            plt.show()
+            '''
+                #print ('Evaluation after epoch %d is : %f' %(epoch, y_h[0]))
+
             if self.save_models:
                 save_path = saver.save(sess, model_location)
                 print 'model saved in - ', save_path
-            return 1.0 - y_h[0]
+            return (1.0 - eval_accuracy, 1.0 - test_accuracy)
 
     # Generate the hyperparam space - currently for learning rate, hidden layer sizes
     def get_from_hyperparam_space(self, base=10):

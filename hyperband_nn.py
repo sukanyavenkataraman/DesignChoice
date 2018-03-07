@@ -67,15 +67,20 @@ class HyperbandNN:
                     all_t_hls = [T_i.hidden_layer_sizes for T_i in T]
                     print all_t_lr
                     print all_t_hls, 'is - '
-                    print (loss)
+                    print loss
 
-                T = [T[i] for i in numpy.argsort(loss)[0:int(math.ceil(float(n_i) / self.eta))]]
+                validloss = [l[0] for l in loss]
+                T = [T[i] for i in numpy.argsort(validloss)[0:int(math.ceil(float(n_i) / self.eta))]]
 
                 # Store the best result
                 result['s'] = s
                 result['n_i'] = n_i
                 result['r_i'] = r_i
-                result['error'] = min(loss)
+                result['error'] = min(validloss)
+                print result['error']
+                #print min(loss)[0], loss.index(result['error'])
+                indices = [i for i, l in enumerate(loss) if l[0] == result['error']]
+                result['test_error'] = loss[indices[0]][1]
                 result['hyperparams_learning_rate'] = T[0].learning_rate
                 result['hyperparams_hidden_layer_sizes'] = T[0].hidden_layer_sizes
 

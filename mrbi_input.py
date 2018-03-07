@@ -1,7 +1,7 @@
 import numpy as np
 import imp
 import scattering as scattering
-
+from sklearn.model_selection import StratifiedShuffleSplit
 #TODO: Make all input reads the same
 random_seed = imp.load_source('random_seed', '/home/sukanya/tensorflow/local/lib/python2.7/site-packages/tensorflow/python/framework/random_seed.py')
 
@@ -152,10 +152,15 @@ def get_data(filename, train = True, one_hot_encoding=False, do_scattering_trans
         cls[current_instance] = parts_labels
 
         current_instance += 1
+    shuffleSplit = StratifiedShuffleSplit(n_splits=1, test_size=2000, random_state=np.random.RandomState())
+
+    for train, valid in shuffleSplit.split(X=images, y=cls):
+        train_set_images, train_set_labels = np.take(images, train, axis=0), np.take(cls, train, axis=0)
+        valid_set_images, valid_set_labels = np.take(images, valid, axis=0), np.take(cls, valid, axis=0)
 
     if one_hot_encoding:
-        # How does next_batch affect one hot encoding?!
-        return DataSet(images, dense_to_one_hot(cls, 10), channels=True) if do_scattering_transform else DataSet(images, dense_to_one_hot(cls, 10), channels=False)
+        return DataSet(train_set_images, dense_to_one_hot(train_set_labels, 10), channels=True) if do_scattering_transform else DataSet(images, dense_to_one_hot(cls, 10), channels=False),\
+               DataSet(valid_set_images, dense_to_one_hot(valid_set_labels, 10), channels=False)
     else:
         return DataSet(images, cls, channels=False)
 

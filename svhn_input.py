@@ -5,6 +5,7 @@ SVHN input - present in .mat files. Loading it directly as an np array
 import scipy.io, numpy as np
 import mrbi_input, cifar10_input
 from matplotlib import pyplot as plt
+from sklearn.model_selection import StratifiedShuffleSplit
 
 # Width and height of each image.
 img_size = 32
@@ -65,8 +66,14 @@ def get_data(filename, is_vgg=False, train=True, one_hot_encoding=False):
     cls = data['y'].reshape((-1))
     cls[cls == 10] = 0
 
+    shuffleSplit = StratifiedShuffleSplit(n_splits=1, test_size=6000, random_state=np.random.RandomState())
+
+    for train, valid in shuffleSplit.split(X=images, y=cls):
+        train_set_images, train_set_labels = np.take(images, train, axis=0), np.take(cls, train, axis=0)
+        valid_set_images, valid_set_labels = np.take(images, valid, axis=0), np.take(cls, valid, axis=0)
+
     if one_hot_encoding:
-        # TODO:How does next_batch affect one hot encoding?!
-        return mrbi_input.DataSet(images, mrbi_input.dense_to_one_hot(cls, 10), channels=True)
+        return mrbi_input.DataSet(train_set_images, mrbi_input.dense_to_one_hot(train_set_labels, 10), channels=True),\
+               mrbi_input.DataSet(valid_set_images, mrbi_input.dense_to_one_hot(valid_set_labels, 10), channels=True)
     else:
         return mrbi_input.DataSet(images, cls)

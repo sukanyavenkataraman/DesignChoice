@@ -27,20 +27,20 @@ if dshp == -1 : # Use TF's fully automated API for dnn
                                                  dropout = 0.25)
 
 if dshp == 0: #Sanity check
-    hidden_layer_size_1 = [150,100]
+    hidden_layer_size_1 = [512]
 
-    batch_size = 30
+    batch_size = 32
     learning_rate = 1.0
-    decay_steps = 100
-    decay_rate = 0.99
-    data_type = 'mri'
+    decay_steps = 10000
+    decay_rate = 0.50
+    data_type = 'av45'
 
     print 'Running for configurations - '
     print str(data_type) + '_' + \
                str(hidden_layer_size_1) +'hls_' + str(batch_size) + 'bs_' + str(learning_rate) + 'lr_' + str(decay_steps) + \
                'decay_' + str(decay_rate) + '_' + '10epochs_0.5dropout_withvgg_3layers_check'
 
-    input_data = deepnn.DataSet(data_type=data_type, use_vgg_pretrained=False, kl_type='median', num_classes=4)
+    input_data = deepnn.DataSet(data_type=data_type, use_resnet_pretrained = True, use_vgg_pretrained=False, num_conv_layers=5, kl_type='mean', num_classes=4)
     num_phis = 2
     phis = [[0.001, 0.001, 0.5], [0.001, 0.001, 0.5]]
     '''
@@ -68,7 +68,7 @@ if dshp == 0: #Sanity check
                            learning_rate)
 
     deep_nn.run_eval_hyperparam_withbs(hyperparams=h,
-                                       num_epochs=100,
+                                       num_epochs=50,
                                        keepProb=0.5)
 
 if dshp == 1:

@@ -1,9 +1,44 @@
 
+########################################################################
+#
+# Functions for downloading the CIFAR-10 data-set from the internet
+# and loading it into memory.
+#
+# Implemented in Python 3.5
+#
+# Usage:
+# 1) Set the variable data_path with the desired storage path.
+# 2) Call maybe_download_and_extract() to download the data-set
+#    if it is not already located in the given data_path.
+# 3) Call load_class_names() to get an array of the class-names.
+# 4) Call load_training_data() and load_test_data() to get
+#    the images, class-numbers and one-hot encoded class-labels
+#    for the training-set and test-set.
+# 5) Use the returned data in your own program.
+#
+# Format:
+# The images for the training- and test-sets are returned as 4-dim numpy
+# arrays each with the shape: [image_number, height, width, channel]
+# where the individual pixels are floats between 0.0 and 1.0.
+#
+########################################################################
+#
+# This file is part of the TensorFlow Tutorials available at:
+#
+# https://github.com/Hvass-Labs/TensorFlow-Tutorials
+#
+# Published under the MIT License. See the file LICENSE for details.
+#
+# Copyright 2016 by Magnus Erik Hvass Pedersen
+#
+########################################################################
+
 import numpy as np
 import cPickle
 import os
 import mrbi_input
 from matplotlib import pyplot as plt
+from sklearn.model_selection import StratifiedShuffleSplit
 
 # Width and height of each image.
 img_size = 32
@@ -37,6 +72,11 @@ def dense_to_one_hot(labels_dense, num_classes):
     return labels_one_hot
 
 def _unpickle(data_dir, filename):
+    """
+    Unpickle the given file and return the data.
+    Note that the appropriate dir-name is prepended the filename.
+    """
+
     # Create full path for the file.
     file_path = os.path.join(data_dir, "cifar-10-batches-py/%s"%filename)
 
@@ -89,6 +129,12 @@ def _load_data(data_dir, filename):
 
     return images, cls
 
+
+########################################################################
+# Public functions that you may call to download the data-set from
+# the internet and load the data into memory.
+
+
 def load_class_names(data_dir):
     """
     Load the names for the classes in the CIFAR-10 data-set.
@@ -105,18 +151,29 @@ def load_class_names(data_dir):
     return names
 
 def vgg_get_data(data_dir, filename):
-    images = np.load(data_dir + "cifar-10-batches-py/%s"%filename)
+    images = np.load(data_dir + "cifar10_vgg/%s"%filename)
     return images
 
-def load_training_data(data_dir, vgg=False, one_hot_encoding=False):
+def load_training_data(data_dir, resnet=False, vgg=False, num_conv_layers=3, one_hot_encoding=True, for_pretraining=False):
     """
     Load all the training-data for the CIFAR-10 data-set.
     The data-set is split into 5 data-files which are merged here.
     Returns the images, class-numbers and one-hot encoded class-labels.
     """
 
-    # Pre-allocate the arrays for the images and class-numbers for efficiency.
-    images = np.zeros(shape=[_num_images_train, 4 if vgg else img_size, 4 if vgg else img_size, 256 if vgg else num_channels], dtype=float) # TODO: Remove hard coding!
+
+
+    if vgg:
+        if num_conv_layers == 3:
+            img_shape = [_num_images_train, 4, 4, 256]
+        if num_conv_layers == 4:
+            img_shape = [_num_images_train, 2, 2, 512]
+        if num_conv_layers == 5:
+            img_shape = [_num_images_train, 1, 1, 512]
+    else:
+        img_shape = [_num_images_train, img_size, img_size, num_channels]
+
+    images_train = np.zeros(shape=img_shape, dtype=float) # TODO: Remove hard coding!
     cls = np.zeros(shape=[_num_images_train], dtype=int)
 
     # Begin-index for the current batch.
@@ -127,8 +184,8 @@ def load_training_data(data_dir, vgg=False, one_hot_encoding=False):
         images_batch, cls_batch = _load_data(data_dir, filename="data_batch_" + str(i + 1))
 
         if vgg:
-            images_batch_vgg = vgg_get_data(data_dir, filename="vgg_data_batch_" + str(i + 1))
- 
+            images_batch_vgg = vgg_get_data(data_dir, filename="vgg_"+str(num_conv_layers)+"_data_batch_" + str(i + 1))
+
         # Number of images in this batch.
         num_images = len(images_batch) if not vgg else len(images_batch_vgg)
 
@@ -136,7 +193,7 @@ def load_training_data(data_dir, vgg=False, one_hot_encoding=False):
         end = begin + num_images
 
         # Store the images into the array.
-        images[begin:end, :] = images_batch if not vgg else images_batch_vgg
+        images_train[begin:end, :] = images_batch if not vgg else images_batch_vgg
 
         # Store the class-numbers into the array.
         cls[begin:end] = cls_batch
@@ -144,25 +201,51 @@ def load_training_data(data_dir, vgg=False, one_hot_encoding=False):
         # The begin-index for the next batch is the current end-index.
         begin = end
 
+    if for_pretraining:
+        return mrbi_input.DataSet(images_train, dense_to_one_hot(cls, 10), channels=True)
+
+    if resnet:
+        images = np.load(data_dir+"cifar10_resnet/cifar10_resnet50.npz")['features']
+        reshape = False
+        print images.shape
+
+    else:
+        images = images_train
+        reshape = True
+
+    shuffleSplit = StratifiedShuffleSplit(n_splits=1, test_size=10000, random_state=np.random.RandomState())
+
+    for train, valid in shuffleSplit.split(X=images, y=cls):
+        train_set_images, train_set_labels = np.take(images, train, axis=0), np.take(cls, train, axis=0)
+        valid_set_images, valid_set_labels = np.take(images, valid, axis=0), np.take(cls, valid, axis=0)
+
 
     if one_hot_encoding:
-        return mrbi_input.DataSet(images, dense_to_one_hot(cls, 10), channels=True)
+        return mrbi_input.DataSet(train_set_images, dense_to_one_hot(train_set_labels, 10), channels=True, reshape=reshape),\
+               mrbi_input.DataSet(valid_set_images, dense_to_one_hot(valid_set_labels, 10), channels=True, reshape=reshape)
     else:
         return mrbi_input.DataSet(images, cls, channels=True)
 
 
-def load_test_data(data_dir, vgg = False, one_hot_encoding=False):
+def load_test_data(data_dir, resnet = False, vgg = False, num_conv_layers=2, one_hot_encoding=True, for_pretraining=True):
     """
     Load all the test-data for the CIFAR-10 data-set.
     Returns the images, class-numbers and one-hot encoded class-labels.
     """
 
-    images, cls = _load_data(data_dir, filename="test_batch")
+    images_test, cls = _load_data(data_dir, filename="test_batch")
 
     if vgg:
-	images_vgg = vgg_get_data(data_dir, filename="vgg_test_data")
+	    images_vgg = vgg_get_data(data_dir, filename="vgg_"+str(num_conv_layers)+"_test_batch_1")
+
+    if resnet:
+        images = np.load(data_dir+"cifar10_resnet/cifar10_resnet50_test.npz")['features']
+        reshape = False
+    else:
+        images = images_test
+        reshape = True
 
     if one_hot_encoding:
-        return mrbi_input.DataSet(images if not vgg else images_vgg, dense_to_one_hot(cls, 10), channels=True)
+        return mrbi_input.DataSet(images if not vgg else images_vgg, dense_to_one_hot(cls, 10), channels=True, reshape=reshape)
     else:
         return mrbi_input.DataSet(images if not vgg else images_vgg, cls, channels=True)
