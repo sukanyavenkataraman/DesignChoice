@@ -45,8 +45,12 @@ all_data[2][0] = np.pad(all_data[2][0], pad_width=((0,0), (60,61), (52,53), (0,0
 all_data[2][0] = np.repeat(all_data[2][0], 3, axis=3)
 all_data[2][1] = np.repeat(all_data[2][1], depth, axis=0)
 
+
+# In[3]:
+
+
 model = models.Sequential()
-base_model = InceptionV3(include_top=False, weights='imagenet', input_shape=(200, 200, 3), pooling='max')
+base_model = ResNet50(include_top=False, weights='imagenet', input_shape=(200, 200, 3), pooling='max')
 model.add(base_model)
 model.add(layers.Dense(512))
 model.add(layers.Dense(4, activation='softmax'))
@@ -55,7 +59,16 @@ model.summary()
 for layer in base_model.layers:
     layer.trainable = False
 
+
+# In[4]:
+
+
 model.compile(optimizer=optimizers.adam(lr=0.001, decay=0.9), loss=losses.categorical_crossentropy, metrics=[metrics.categorical_accuracy])
+
+
+# In[ ]:
+
+
 
 # Save best model
 filepath="weights_resnet.best.hdf5"
@@ -64,7 +77,7 @@ callbacks_list = [checkpoint]
 
 print ('going to train')
 
-hist = model.fit(all_data[0][0], all_data[0][1], epochs=1, batch_size=256, callbacks=callbacks_list, verbose=1) # Add validation_split?
+hist = model.fit(all_data[0][0], all_data[0][1], validation_data=(all_data[1][0], all_data[1][1]), epochs=1, batch_size=64, callbacks=callbacks_list, verbose=1) # Add validation_split?
 
 print (hist.history)
 print('going to test')
